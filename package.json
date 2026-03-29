@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test --import tsx"
+    "test": "node --test --import tsx \"test/**/*.test.ts\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
