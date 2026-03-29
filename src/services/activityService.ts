@@ -9,16 +9,31 @@ export type CreateActivityInput = {
   status?: string;
 };
 
-export async function listActivities(status?: string) {
+export type ListActivitiesInput = {
+  status?: string;
+  page: number;
+  page_size: number;
+};
+
+export async function listActivities(input: ListActivitiesInput) {
   const repo = getActivityRepository();
-  const where = status ? { status } : {};
-  return repo.find({
+  const where = input.status ? { status: input.status } : {};
+  const [items, total] = await repo.findAndCount({
     where,
     order: {
       startTime: "ASC",
       id: "ASC"
-    }
+    },
+    skip: (input.page - 1) * input.page_size,
+    take: input.page_size
   });
+
+  return {
+    items,
+    page: input.page,
+    page_size: input.page_size,
+    total
+  };
 }
 
 export async function createActivity(input: CreateActivityInput) {
