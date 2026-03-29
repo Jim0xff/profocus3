@@ -140,6 +140,14 @@ test("activities list validates invalid query params with BAD_REQUEST", async ()
 
     assert.equal(response.status, 400);
     assert.equal(response.body.code, "BAD_REQUEST");
+
+    const pageSizeResponse = await request(app).get("/api/v1/activities?page_size=101");
+    assert.equal(pageSizeResponse.status, 400);
+    assert.equal(pageSizeResponse.body.code, "BAD_REQUEST");
+
+    const malformedStatusResponse = await request(app).get("/api/v1/activities?status=published&status=draft");
+    assert.equal(malformedStatusResponse.status, 400);
+    assert.equal(malformedStatusResponse.body.code, "BAD_REQUEST");
   } finally {
     await cleanup();
   }
@@ -206,6 +214,34 @@ test("registration returns NOT_FOUND when activity does not exist", async () => 
   }
 });
 
+test("registration returns BAD_REQUEST for invalid payload", async () => {
+  const { app, cleanup } = await bootstrap();
+
+  try {
+    const missingFieldResponse = await request(app)
+      .post("/api/v1/registrations")
+      .send({
+        activity_id: 1,
+        name: "Alice",
+        phone: "+15550000001",
+        school: "Example University",
+        github: "alicehub"
+      });
+
+    assert.equal(missingFieldResponse.status, 400);
+    assert.equal(missingFieldResponse.body.code, "BAD_REQUEST");
+
+    const malformedBodyResponse = await request(app)
+      .post("/api/v1/registrations")
+      .send([]);
+
+    assert.equal(malformedBodyResponse.status, 400);
+    assert.equal(malformedBodyResponse.body.code, "BAD_REQUEST");
+  } finally {
+    await cleanup();
+  }
+});
+
 test("review returns BAD_REQUEST for invalid action", async () => {
   const { app, cleanup } = await bootstrap();
   const auth = makeBasicAuth("admin", "changeme123");
@@ -236,6 +272,38 @@ test("review returns BAD_REQUEST for invalid action", async () => {
   }
 });
 
+test("review route returns UNAUTHORIZED without admin auth", async () => {
+  const { app, cleanup } = await bootstrap();
+
+  try {
+    const response = await request(app)
+      .post("/api/v1/admin/registrations/1/review")
+      .send({ action: "approve" });
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.code, "UNAUTHORIZED");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("review route returns BAD_REQUEST for invalid registration id path", async () => {
+  const { app, cleanup } = await bootstrap();
+  const auth = makeBasicAuth("admin", "changeme123");
+
+  try {
+    const response = await request(app)
+      .post("/api/v1/admin/registrations/not-a-number/review")
+      .set("Authorization", auth)
+      .send({ action: "approve" });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.code, "BAD_REQUEST");
+  } finally {
+    await cleanup();
+  }
+});
+
 test("export returns NOT_FOUND when activity does not exist", async () => {
   const { app, cleanup } = await bootstrap();
   const auth = makeBasicAuth("admin", "changeme123");
@@ -247,6 +315,35 @@ test("export returns NOT_FOUND when activity does not exist", async () => {
 
     assert.equal(response.status, 404);
     assert.equal(response.body.code, "NOT_FOUND");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("export route returns UNAUTHORIZED without admin auth", async () => {
+  const { app, cleanup } = await bootstrap();
+
+  try {
+    const response = await request(app).get("/api/v1/admin/activities/1/registrations/export.csv");
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.code, "UNAUTHORIZED");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("export route returns BAD_REQUEST for invalid activity id path", async () => {
+  const { app, cleanup } = await bootstrap();
+  const auth = makeBasicAuth("admin", "changeme123");
+
+  try {
+    const response = await request(app)
+      .get("/api/v1/admin/activities/not-a-number/registrations/export.csv")
+      .set("Authorization", auth);
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.code, "BAD_REQUEST");
   } finally {
     await cleanup();
   }

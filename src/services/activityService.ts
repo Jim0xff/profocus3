@@ -37,6 +37,10 @@ export async function listActivities(input: ListActivitiesInput) {
 }
 
 export async function createActivity(input: CreateActivityInput) {
+  if (!isPlainObject(input)) {
+    throw new BadRequestError("request body must be a JSON object");
+  }
+
   if (!input.title?.trim()) {
     throw new BadRequestError("title is required");
   }
@@ -60,4 +64,8 @@ export async function createActivity(input: CreateActivityInput) {
   });
 
   return repo.save(activity);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

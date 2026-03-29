@@ -49,14 +49,16 @@ export async function createRegistration(input: CreateRegistrationInput) {
 }
 
 function validateRegistrationInput(input: CreateRegistrationInput) {
+  if (!isPlainObject(input)) {
+    throw new BadRequestError("request body must be a JSON object");
+  }
+
   if (!Number.isInteger(input.activity_id) || input.activity_id <= 0) {
     throw new BadRequestError("activity_id must be a positive integer");
   }
 
-  for (const [field, value] of Object.entries(input)) {
-    if (field === "activity_id") {
-      continue;
-    }
+  for (const field of ["name", "email", "phone", "school", "github"] as const) {
+    const value = input[field];
     if (typeof value !== "string" || !value.trim()) {
       throw new BadRequestError(`${field} is required`);
     }
@@ -65,6 +67,10 @@ function validateRegistrationInput(input: CreateRegistrationInput) {
   if (!emailRegex.test(input.email.trim())) {
     throw new BadRequestError("email must be valid");
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isUniqueConstraintError(error: unknown) {

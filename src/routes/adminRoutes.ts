@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { BadRequestError } from "../infra/HttpError.js";
 import { requireAdminAuth } from "../infra/authMiddleware.js";
 import { createActivity } from "../services/activityService.js";
 import { exportRegistrationsCsv } from "../services/exportService.js";
@@ -25,7 +26,7 @@ adminRouter.post("/activities", async (req, res, next) => {
 adminRouter.post("/registrations/:id/review", async (req, res, next) => {
   try {
     const reviewed = await reviewRegistration(
-      Number(req.params.id),
+      parsePositiveIntegerPathParam(req.params.id, "id"),
       req.body?.action,
       req.adminUser!.id
     );
@@ -41,7 +42,9 @@ adminRouter.post("/registrations/:id/review", async (req, res, next) => {
 
 adminRouter.get("/activities/:activityId/registrations/export.csv", async (req, res, next) => {
   try {
-    const result = await exportRegistrationsCsv(Number(req.params.activityId));
+    const result = await exportRegistrationsCsv(
+      parsePositiveIntegerPathParam(req.params.activityId, "activityId")
+    );
     res
       .set("Content-Type", "text/csv; charset=utf-8")
       .set("Content-Disposition", `attachment; filename="${result.filename}"`)
@@ -51,3 +54,16 @@ adminRouter.get("/activities/:activityId/registrations/export.csv", async (req, 
     next(error);
   }
 });
+
+function parsePositiveIntegerPathParam(value: string, field: string) {
+  if (!/^\d+$/.test(value)) {
+    throw new BadRequestError(`${field} must be a positive integer`);
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new BadRequestError(`${field} must be a positive integer`);
+  }
+
+  return parsed;
+}
